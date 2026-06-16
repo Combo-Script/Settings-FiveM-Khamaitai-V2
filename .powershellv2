@@ -1,0 +1,671 @@
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class WinTimer {
+    [DllImport("winmm.dll")]
+    public static extern uint timeBeginPeriod(uint uMilliseconds);
+}
+"@
+
+$psReadLinePath = "$env:APPDATA\Microsoft\Windows\PowerShell\PSReadLine"
+if (Test-Path $psReadLinePath) {
+    Remove-Item $psReadLinePath -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+$cBG          = [System.Drawing.Color]::FromArgb(255, 8, 9, 12)
+$cPanel       = [System.Drawing.Color]::FromArgb(255, 14, 16, 22)
+$cPanelBorder = [System.Drawing.Color]::FromArgb(255, 26, 32, 46)
+$cTeal        = [System.Drawing.Color]::FromArgb(255, 0, 210, 175)
+$cTealDim     = [System.Drawing.Color]::FromArgb(255, 0, 100, 85)
+$cTealGlow    = [System.Drawing.Color]::FromArgb(255, 0, 240, 200)
+$cAmber       = [System.Drawing.Color]::FromArgb(255, 240, 160, 20)
+$cAmberDim    = [System.Drawing.Color]::FromArgb(255, 100, 62, 5)
+$cWhite       = [System.Drawing.Color]::FromArgb(255, 210, 218, 230)
+$cGray        = [System.Drawing.Color]::FromArgb(255, 72, 84, 106)
+$cGrayDim     = [System.Drawing.Color]::FromArgb(255, 20, 26, 38)
+$cGrayMid     = [System.Drawing.Color]::FromArgb(255, 34, 42, 58)
+$cRed         = [System.Drawing.Color]::FromArgb(255, 220, 60, 60)
+$cGreen       = [System.Drawing.Color]::FromArgb(255, 70, 210, 110)
+$cMagenta     = [System.Drawing.Color]::FromArgb(255, 170, 70, 230)
+$cViolet      = [System.Drawing.Color]::FromArgb(255, 120, 90, 220)
+
+$fontMono     = New-Object System.Drawing.Font("Consolas", 10, [System.Drawing.FontStyle]::Regular)
+$fontMonoSm   = New-Object System.Drawing.Font("Consolas", 9,  [System.Drawing.FontStyle]::Regular)
+$fontMonoXs   = New-Object System.Drawing.Font("Consolas", 8,  [System.Drawing.FontStyle]::Regular)
+$fontLabel    = New-Object System.Drawing.Font("Consolas", 9,  [System.Drawing.FontStyle]::Bold)
+$fontBtn      = New-Object System.Drawing.Font("Consolas", 10, [System.Drawing.FontStyle]::Bold)
+$fontBtnSm    = New-Object System.Drawing.Font("Consolas", 8,  [System.Drawing.FontStyle]::Bold)
+$fontTitle    = New-Object System.Drawing.Font("Consolas", 12, [System.Drawing.FontStyle]::Bold)
+$fontTitleSm  = New-Object System.Drawing.Font("Consolas", 8,  [System.Drawing.FontStyle]::Regular)
+
+$form = New-Object System.Windows.Forms.Form
+$form.Text            = "KUN KHAMAITAI"
+$form.Width           = 920
+$form.Height          = 700
+$form.StartPosition   = "CenterScreen"
+$form.BackColor       = $cBG
+$form.FormBorderStyle = "None"
+$form.MaximizeBox     = $false
+$form.TopMost         = $true
+
+$isDragging = $false
+$dragStart  = [System.Drawing.Point]::Empty
+
+$form.Add_MouseDown({
+    param($s, $e)
+    if ($e.Button -eq [System.Windows.Forms.MouseButtons]::Left) {
+        $isDragging = $true
+        $dragStart  = [System.Drawing.Point]::new($e.X, $e.Y)
+    }
+})
+$form.Add_MouseMove({
+    param($s, $e)
+    if ($isDragging) {
+        $form.Left += $e.X - $dragStart.X
+        $form.Top  += $e.Y - $dragStart.Y
+    }
+})
+$form.Add_MouseUp({ $isDragging = $false })
+
+$form.Add_Paint({
+    param($s, $e)
+    $g = $e.Graphics
+    $pen = New-Object System.Drawing.Pen($cPanelBorder, 1)
+    $g.DrawRectangle($pen, 0, 0, $form.Width - 1, $form.Height - 1)
+    $pen.Dispose()
+})
+
+$topBar = New-Object System.Windows.Forms.Panel
+$topBar.Dock      = "None"
+$topBar.Left      = 0
+$topBar.Top       = 0
+$topBar.Width     = 920
+$topBar.Height    = 52
+$topBar.BackColor = $cPanel
+$form.Controls.Add($topBar)
+
+$topBar.Add_Paint({
+    param($s, $e)
+    $g = $e.Graphics
+    $penB = New-Object System.Drawing.Pen($cPanelBorder, 1)
+    $g.DrawLine($penB, 0, $topBar.Height - 1, $topBar.Width, $topBar.Height - 1)
+    $penB.Dispose()
+    $brushAccent = New-Object System.Drawing.SolidBrush($cTeal)
+    $g.FillRectangle($brushAccent, 0, 0, 3, $topBar.Height)
+    $brushAccent.Dispose()
+})
+
+$topBar.Add_MouseDown({
+    param($s, $e)
+    if ($e.Button -eq [System.Windows.Forms.MouseButtons]::Left) {
+        $isDragging = $true
+        $dragStart  = [System.Drawing.Point]::new($e.X + $topBar.Left, $e.Y + $topBar.Top)
+    }
+})
+$topBar.Add_MouseMove({
+    param($s, $e)
+    if ($isDragging) {
+        $form.Left += $e.X - ($dragStart.X - $topBar.Left)
+        $form.Top  += $e.Y - ($dragStart.Y - $topBar.Top)
+    }
+})
+$topBar.Add_MouseUp({ $isDragging = $false })
+
+$lblTitle = New-Object System.Windows.Forms.Label
+$lblTitle.Text      = "KUN KHAMAITAI"
+$lblTitle.ForeColor = $cWhite
+$lblTitle.Font      = $fontTitle
+$lblTitle.AutoSize  = $true
+$lblTitle.Left      = 22
+$lblTitle.Top       = 10
+$topBar.Controls.Add($lblTitle)
+
+$lblSub = New-Object System.Windows.Forms.Label
+$lblSub.Text      = "SYSTEM OPTIMIZER  /  v2.0"
+$lblSub.ForeColor = $cGray
+$lblSub.Font      = $fontTitleSm
+$lblSub.AutoSize  = $true
+$lblSub.Left      = 24
+$lblSub.Top       = 32
+$topBar.Controls.Add($lblSub)
+
+$btnMinimize = New-Object System.Windows.Forms.Button
+$btnMinimize.Text      = "_"
+$btnMinimize.ForeColor = $cGray
+$btnMinimize.BackColor = $cPanel
+$btnMinimize.FlatStyle = "Flat"
+$btnMinimize.FlatAppearance.BorderSize = 0
+$btnMinimize.Font      = New-Object System.Drawing.Font("Consolas", 13, [System.Drawing.FontStyle]::Regular)
+$btnMinimize.Width     = 38
+$btnMinimize.Height    = 38
+$btnMinimize.Left      = 840
+$btnMinimize.Top       = 7
+$btnMinimize.Add_Click({ $form.WindowState = "Minimized" })
+$btnMinimize.Add_MouseEnter({ $btnMinimize.ForeColor = $cWhite })
+$btnMinimize.Add_MouseLeave({ $btnMinimize.ForeColor = $cGray })
+$topBar.Controls.Add($btnMinimize)
+
+$btnClose = New-Object System.Windows.Forms.Button
+$btnClose.Text      = "x"
+$btnClose.ForeColor = $cGray
+$btnClose.BackColor = $cPanel
+$btnClose.FlatStyle = "Flat"
+$btnClose.FlatAppearance.BorderSize = 0
+$btnClose.Font      = New-Object System.Drawing.Font("Consolas", 12, [System.Drawing.FontStyle]::Bold)
+$btnClose.Width     = 38
+$btnClose.Height    = 38
+$btnClose.Left      = 878
+$btnClose.Top       = 7
+$btnClose.Add_Click({ $form.Close() })
+$btnClose.Add_MouseEnter({ $btnClose.ForeColor = $cRed; $btnClose.BackColor = [System.Drawing.Color]::FromArgb(255, 40, 16, 16) })
+$btnClose.Add_MouseLeave({ $btnClose.ForeColor = $cGray; $btnClose.BackColor = $cPanel })
+$topBar.Controls.Add($btnClose)
+
+$leftPanel = New-Object System.Windows.Forms.Panel
+$leftPanel.Left      = 0
+$leftPanel.Top       = 52
+$leftPanel.Width     = 270
+$leftPanel.Height    = 648
+$leftPanel.BackColor = $cPanel
+$form.Controls.Add($leftPanel)
+
+$leftPanel.Add_Paint({
+    param($s, $e)
+    $g = $e.Graphics
+    $pen = New-Object System.Drawing.Pen($cPanelBorder, 1)
+    $g.DrawLine($pen, 269, 0, 269, $leftPanel.Height)
+    $pen.Dispose()
+})
+
+function New-SectionHeader {
+    param($parent, $text, $top)
+    $lbl = New-Object System.Windows.Forms.Label
+    $lbl.Text      = $text
+    $lbl.ForeColor = $cTeal
+    $lbl.Font      = $fontLabel
+    $lbl.AutoSize  = $true
+    $lbl.Left      = 24
+    $lbl.Top       = $top
+    $parent.Controls.Add($lbl)
+
+    $hr = New-Object System.Windows.Forms.Panel
+    $hr.Left      = 24
+    $hr.Top       = $top + 18
+    $hr.Width     = 222
+    $hr.Height    = 1
+    $hr.BackColor = $cPanelBorder
+    $parent.Controls.Add($hr)
+    return $hr
+}
+
+New-SectionHeader -parent $leftPanel -text "ACCESS" -top 28 | Out-Null
+
+$lblCodeLabel = New-Object System.Windows.Forms.Label
+$lblCodeLabel.Text      = "LICENSE KEY"
+$lblCodeLabel.ForeColor = $cGray
+$lblCodeLabel.Font      = $fontMonoXs
+$lblCodeLabel.AutoSize  = $true
+$lblCodeLabel.Left      = 24
+$lblCodeLabel.Top       = 62
+$leftPanel.Controls.Add($lblCodeLabel)
+
+$codeBox = New-Object System.Windows.Forms.TextBox
+$codeBox.Left        = 24
+$codeBox.Top         = 78
+$codeBox.Width       = 222
+$codeBox.Height      = 30
+$codeBox.PasswordChar = [char]0x2022
+$codeBox.BackColor   = $cGrayDim
+$codeBox.ForeColor   = $cWhite
+$codeBox.Font        = $fontMono
+$codeBox.BorderStyle = "FixedSingle"
+$leftPanel.Controls.Add($codeBox)
+
+$startBtn = New-Object System.Windows.Forms.Button
+$startBtn.Text      = "ACTIVATE"
+$startBtn.Left      = 24
+$startBtn.Top       = 124
+$startBtn.Width     = 136
+$startBtn.Height    = 34
+$startBtn.BackColor = $cTeal
+$startBtn.ForeColor = $cBG
+$startBtn.Font      = $fontBtn
+$startBtn.FlatStyle = "Flat"
+$startBtn.FlatAppearance.BorderSize = 0
+$startBtn.Cursor    = [System.Windows.Forms.Cursors]::Hand
+$startBtn.Add_MouseEnter({ $startBtn.BackColor = $cTealGlow })
+$startBtn.Add_MouseLeave({ $startBtn.BackColor = $cTeal })
+$leftPanel.Controls.Add($startBtn)
+
+$hwIdBtn = New-Object System.Windows.Forms.Button
+$hwIdBtn.Text      = "GET HWID"
+$hwIdBtn.Left      = 166
+$hwIdBtn.Top       = 124
+$hwIdBtn.Width     = 80
+$hwIdBtn.Height    = 34
+$hwIdBtn.BackColor = $cGrayMid
+$hwIdBtn.ForeColor = $cTeal
+$hwIdBtn.Font      = $fontBtnSm
+$hwIdBtn.FlatStyle = "Flat"
+$hwIdBtn.FlatAppearance.BorderSize  = 1
+$hwIdBtn.FlatAppearance.BorderColor = $cTealDim
+$hwIdBtn.Cursor    = [System.Windows.Forms.Cursors]::Hand
+$hwIdBtn.Add_MouseEnter({ $hwIdBtn.BackColor = [System.Drawing.Color]::FromArgb(255, 20, 42, 50); $hwIdBtn.FlatAppearance.BorderColor = $cTeal })
+$hwIdBtn.Add_MouseLeave({ $hwIdBtn.BackColor = $cGrayMid; $hwIdBtn.FlatAppearance.BorderColor = $cTealDim })
+$hwIdBtn.Add_Click({
+    $hwid = (Get-CimInstance Win32_ComputerSystemProduct).UUID
+    [System.Windows.Forms.Clipboard]::SetText($hwid)
+    [System.Windows.Forms.MessageBox]::Show(
+        "HWID:`n$hwid`n`nCopied to clipboard.",
+        "HARDWARE ID",
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Information
+    )
+})
+$leftPanel.Controls.Add($hwIdBtn)
+
+$hrDiv1 = New-Object System.Windows.Forms.Panel
+$hrDiv1.Left      = 24
+$hrDiv1.Top       = 175
+$hrDiv1.Width     = 222
+$hrDiv1.Height    = 1
+$hrDiv1.BackColor = $cPanelBorder
+$leftPanel.Controls.Add($hrDiv1)
+
+New-SectionHeader -parent $leftPanel -text "STATUS" -top 192 | Out-Null
+
+$statusDot = New-Object System.Windows.Forms.Panel
+$statusDot.Left      = 24
+$statusDot.Top       = 226
+$statusDot.Width     = 8
+$statusDot.Height    = 8
+$statusDot.BackColor = $cGray
+$leftPanel.Controls.Add($statusDot)
+
+$lblStatus = New-Object System.Windows.Forms.Label
+$lblStatus.Text      = "STANDBY"
+$lblStatus.ForeColor = $cGray
+$lblStatus.Font      = $fontMonoSm
+$lblStatus.AutoSize  = $true
+$lblStatus.Left      = 38
+$lblStatus.Top       = 222
+$leftPanel.Controls.Add($lblStatus)
+
+$hrDiv2 = New-Object System.Windows.Forms.Panel
+$hrDiv2.Left      = 24
+$hrDiv2.Top       = 248
+$hrDiv2.Width     = 222
+$hrDiv2.Height    = 1
+$hrDiv2.BackColor = $cPanelBorder
+$leftPanel.Controls.Add($hrDiv2)
+
+New-SectionHeader -parent $leftPanel -text "PROGRESS" -top 265 | Out-Null
+
+$progBG = New-Object System.Windows.Forms.Panel
+$progBG.Left      = 24
+$progBG.Top       = 298
+$progBG.Width     = 222
+$progBG.Height    = 4
+$progBG.BackColor = $cGrayMid
+$leftPanel.Controls.Add($progBG)
+
+$progFill = New-Object System.Windows.Forms.Panel
+$progFill.Left      = 24
+$progFill.Top       = 298
+$progFill.Width     = 0
+$progFill.Height    = 4
+$progFill.BackColor = $cTeal
+$leftPanel.Controls.Add($progFill)
+
+$progress = New-Object System.Windows.Forms.ProgressBar
+$progress.Left    = 24
+$progress.Top     = 298
+$progress.Width   = 222
+$progress.Height  = 4
+$progress.Minimum = 0
+$progress.Maximum = 100
+$progress.Value   = 0
+$progress.Style   = "Continuous"
+$progress.Visible = $false
+$leftPanel.Controls.Add($progress)
+
+$lblProgPct = New-Object System.Windows.Forms.Label
+$lblProgPct.Text      = "0%"
+$lblProgPct.ForeColor = $cGray
+$lblProgPct.Font      = $fontMonoXs
+$lblProgPct.AutoSize  = $true
+$lblProgPct.Left      = 24
+$lblProgPct.Top       = 308
+$leftPanel.Controls.Add($lblProgPct)
+
+$hrDiv3 = New-Object System.Windows.Forms.Panel
+$hrDiv3.Left      = 24
+$hrDiv3.Top       = 330
+$hrDiv3.Width     = 222
+$hrDiv3.Height    = 1
+$hrDiv3.BackColor = $cPanelBorder
+$leftPanel.Controls.Add($hrDiv3)
+
+New-SectionHeader -parent $leftPanel -text "MODULES" -top 347 | Out-Null
+
+$modules = @(
+    @{ tag = "SYS";   label = "Timer Precision" },
+    @{ tag = "POWER"; label = "Performance Plan" },
+    @{ tag = "INPUT"; label = "Input Tuning" },
+    @{ tag = "NET";   label = "Network Stack" },
+    @{ tag = "APP";   label = "Background Cleanup" },
+    @{ tag = "TEMP";  label = "Temp Files" }
+)
+
+$moduleLabels = @{}
+$yOff = 378
+foreach ($mod in $modules) {
+    $dot = New-Object System.Windows.Forms.Panel
+    $dot.Left      = 24
+    $dot.Top       = $yOff + 4
+    $dot.Width     = 6
+    $dot.Height    = 6
+    $dot.BackColor = $cGrayMid
+    $leftPanel.Controls.Add($dot)
+
+    $lTag = New-Object System.Windows.Forms.Label
+    $lTag.Text      = $mod.tag
+    $lTag.ForeColor = $cGray
+    $lTag.Font      = $fontMonoXs
+    $lTag.Width     = 48
+    $lTag.Left      = 36
+    $lTag.Top       = $yOff
+    $leftPanel.Controls.Add($lTag)
+
+    $lName = New-Object System.Windows.Forms.Label
+    $lName.Text      = $mod.label
+    $lName.ForeColor = $cGray
+    $lName.Font      = $fontMonoXs
+    $lName.AutoSize  = $true
+    $lName.Left      = 88
+    $lName.Top       = $yOff
+    $leftPanel.Controls.Add($lName)
+
+    $moduleLabels[$mod.tag] = @{ dot = $dot; tag = $lTag; name = $lName }
+    $yOff += 20
+}
+
+$sepLine = New-Object System.Windows.Forms.Panel
+$sepLine.Left      = 270
+$sepLine.Top       = 52
+$sepLine.Width     = 1
+$sepLine.Height    = 648
+$sepLine.BackColor = $cPanelBorder
+$form.Controls.Add($sepLine)
+
+$rightPanel = New-Object System.Windows.Forms.Panel
+$rightPanel.Left      = 271
+$rightPanel.Top       = 52
+$rightPanel.Width     = 649
+$rightPanel.Height    = 648
+$rightPanel.BackColor = $cBG
+$form.Controls.Add($rightPanel)
+
+$logHeader = New-Object System.Windows.Forms.Panel
+$logHeader.Left      = 0
+$logHeader.Top       = 0
+$logHeader.Width     = 649
+$logHeader.Height    = 44
+$logHeader.BackColor = $cPanel
+$rightPanel.Controls.Add($logHeader)
+
+$logHeader.Add_Paint({
+    param($s, $e)
+    $pen = New-Object System.Drawing.Pen($cPanelBorder, 1)
+    $e.Graphics.DrawLine($pen, 0, 43, 649, 43)
+    $pen.Dispose()
+})
+
+$lblLogTitle = New-Object System.Windows.Forms.Label
+$lblLogTitle.Text      = "OUTPUT LOG"
+$lblLogTitle.ForeColor = $cWhite
+$lblLogTitle.Font      = $fontLabel
+$lblLogTitle.AutoSize  = $true
+$lblLogTitle.Left      = 20
+$lblLogTitle.Top       = 14
+$logHeader.Controls.Add($lblLogTitle)
+
+$lblLogHint = New-Object System.Windows.Forms.Label
+$lblLogHint.Text      = "system messages"
+$lblLogHint.ForeColor = $cGray
+$lblLogHint.Font      = $fontMonoXs
+$lblLogHint.AutoSize  = $true
+$lblLogHint.Left      = 110
+$lblLogHint.Top       = 16
+$logHeader.Controls.Add($lblLogHint)
+
+$btnClear = New-Object System.Windows.Forms.Button
+$btnClear.Text      = "CLEAR"
+$btnClear.ForeColor = $cGray
+$btnClear.BackColor = $cPanel
+$btnClear.Font      = $fontBtnSm
+$btnClear.FlatStyle = "Flat"
+$btnClear.FlatAppearance.BorderSize  = 1
+$btnClear.FlatAppearance.BorderColor = $cPanelBorder
+$btnClear.Width     = 54
+$btnClear.Height    = 24
+$btnClear.Left      = 575
+$btnClear.Top       = 10
+$btnClear.Cursor    = [System.Windows.Forms.Cursors]::Hand
+$btnClear.Add_Click({ $statusBox.Clear() })
+$btnClear.Add_MouseEnter({ $btnClear.ForeColor = $cWhite; $btnClear.FlatAppearance.BorderColor = $cGray })
+$btnClear.Add_MouseLeave({ $btnClear.ForeColor = $cGray; $btnClear.FlatAppearance.BorderColor = $cPanelBorder })
+$logHeader.Controls.Add($btnClear)
+
+$statusBox = New-Object System.Windows.Forms.RichTextBox
+$statusBox.Left        = 20
+$statusBox.Top         = 54
+$statusBox.Width       = 609
+$statusBox.Height      = 584
+$statusBox.BackColor   = $cBG
+$statusBox.ForeColor   = $cWhite
+$statusBox.Font        = $fontMono
+$statusBox.ReadOnly    = $true
+$statusBox.BorderStyle = "None"
+$statusBox.ScrollBars  = "Vertical"
+$rightPanel.Controls.Add($statusBox)
+$global:statusBox = $statusBox
+
+function Set-Progress {
+    param([int]$val)
+    $progress.Value  = $val
+    $progFill.Width  = [int](222 * $val / 100)
+    $lblProgPct.Text = "$val%"
+    if ($val -eq 100) {
+        $progFill.BackColor = $cGreen
+    } elseif ($val -gt 0) {
+        $progFill.BackColor = $cTeal
+    }
+}
+
+function Set-ModuleActive {
+    param([string]$tag)
+    foreach ($k in $moduleLabels.Keys) {
+        $m = $moduleLabels[$k]
+        if ($k -eq $tag) {
+            $m.dot.BackColor  = $cTeal
+            $m.tag.ForeColor  = $cTeal
+            $m.name.ForeColor = $cWhite
+        } else {
+            $m.dot.BackColor  = $cGrayMid
+            $m.tag.ForeColor  = $cGray
+            $m.name.ForeColor = $cGray
+        }
+    }
+}
+
+function Set-ModuleDone {
+    param([string]$tag)
+    $m = $moduleLabels[$tag]
+    if ($m) {
+        $m.dot.BackColor  = $cGreen
+        $m.tag.ForeColor  = $cGreen
+        $m.name.ForeColor = $cGreen
+    }
+}
+
+function Show-Status {
+    param([string]$Message, [string]$Color = "White")
+    $colorMap = @{
+        "Teal"    = $cTeal
+        "Amber"   = $cAmber
+        "Green"   = $cGreen
+        "Red"     = $cRed
+        "Gray"    = $cGray
+        "White"   = $cWhite
+        "Violet"  = $cViolet
+        "Magenta" = $cMagenta
+    }
+    if ($colorMap.ContainsKey($Color)) {
+        $global:statusBox.SelectionColor = $colorMap[$Color]
+    } else {
+        $global:statusBox.SelectionColor = $cWhite
+    }
+    $global:statusBox.AppendText($Message + [Environment]::NewLine)
+    $global:statusBox.ScrollToCaret()
+    Start-Sleep -Milliseconds 150
+}
+
+$startBtn.Add_Click({
+    $statusBox.Clear()
+    Set-Progress 0
+    foreach ($k in $moduleLabels.Keys) {
+        $m = $moduleLabels[$k]
+        $m.dot.BackColor  = $cGrayMid
+        $m.tag.ForeColor  = $cGray
+        $m.name.ForeColor = $cGray
+    }
+
+    $lblStatus.Text      = "CONNECTING"
+    $lblStatus.ForeColor = $cAmber
+    $statusDot.BackColor = $cAmber
+
+    $Url = "https://raw.githubusercontent.com/Combo-Script/Settings-FiveM-Khamaitai-V2/refs/heads/main/key.powershell.json"
+
+    try {
+        $Licenses = Invoke-RestMethod $Url
+    } catch {
+        [System.Windows.Forms.MessageBox]::Show("Unable to reach license server.", "Connection Error")
+        $lblStatus.Text      = "OFFLINE"
+        $lblStatus.ForeColor = $cRed
+        $statusDot.BackColor = $cRed
+        return
+    }
+
+    $Key  = $codeBox.Text
+    $HWID = (Get-CimInstance Win32_ComputerSystemProduct).UUID
+
+    if (-not $Licenses.PSObject.Properties.Name.Contains($Key)) {
+        [System.Windows.Forms.MessageBox]::Show("Invalid key or HWID mismatch.", "Access Denied")
+        $lblStatus.Text      = "DENIED"
+        $lblStatus.ForeColor = $cRed
+        $statusDot.BackColor = $cRed
+        return
+    }
+
+    if ($Licenses.$Key -ne $HWID) {
+        [System.Windows.Forms.MessageBox]::Show("Invalid key or HWID mismatch.", "Access Denied")
+        $lblStatus.Text      = "DENIED"
+        $lblStatus.ForeColor = $cRed
+        $statusDot.BackColor = $cRed
+        return
+    }
+
+    $lblStatus.Text      = "RUNNING"
+    $lblStatus.ForeColor = $cTeal
+    $statusDot.BackColor = $cTeal
+    Set-Progress 5
+
+    try {
+        Show-Status "  KUN KHAMAITAI  /  SYSTEM OPTIMIZER  /  v2.0" "Teal"
+        Show-Status "  ------------------------------------------------" "Gray"
+        Show-Status ""
+
+        Set-ModuleActive "SYS"
+        Show-Status "  [SYS]    Enabling 1ms timer precision..." "Teal"
+        [WinTimer]::timeBeginPeriod(1) | Out-Null
+        Set-Progress 18
+        Set-ModuleDone "SYS"
+
+        Set-ModuleActive "POWER"
+        Show-Status "  [POWER]  Applying ultimate performance plan..." "Amber"
+        Start-Process -WindowStyle Hidden -FilePath "powercfg.exe" -ArgumentList "-setactive SCHEME_MIN" -Wait
+        Set-Progress 30
+        Set-ModuleDone "POWER"
+
+        Set-ModuleActive "INPUT"
+        Show-Status "  [INPUT]  Tuning keyboard repeat speed..." "Violet"
+        Set-ItemProperty -Path "HKCU:\Control Panel\Keyboard" -Name "KeyboardDelay" -Value "0"
+        Set-ItemProperty -Path "HKCU:\Control Panel\Keyboard" -Name "KeyboardSpeed" -Value "31"
+
+        Show-Status "  [INPUT]  Disabling mouse acceleration..." "Violet"
+        Set-ItemProperty -Path "HKCU:\Control Panel\Mouse" -Name "MouseSpeed"      -Value "0"
+        Set-ItemProperty -Path "HKCU:\Control Panel\Mouse" -Name "MouseThreshold1" -Value "0"
+        Set-ItemProperty -Path "HKCU:\Control Panel\Mouse" -Name "MouseThreshold2" -Value "0"
+        Set-Progress 46
+        Set-ModuleDone "INPUT"
+
+        Show-Status "  [SYS]    Setting foreground priority..." "Teal"
+        New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\PriorityControl" `
+            -Name "Win32PrioritySeparation" -PropertyType DWord -Value 38 -Force | Out-Null
+        Set-Progress 58
+
+        Set-ModuleActive "NET"
+        Show-Status "  [NET]    Flushing DNS cache..." "Amber"
+        Start-Process -WindowStyle Hidden -FilePath "ipconfig.exe" -ArgumentList "/flushdns" -Wait
+
+        Show-Status "  [NET]    Optimizing TCP profile..." "Amber"
+        Start-Process -WindowStyle Hidden -FilePath "netsh.exe" -ArgumentList "int tcp set global autotuninglevel=disabled" -Wait
+        Start-Process -WindowStyle Hidden -FilePath "netsh.exe" -ArgumentList "int tcp set global rss=enabled" -Wait
+        Start-Process -WindowStyle Hidden -FilePath "netsh.exe" -ArgumentList "int tcp set global chimney=enabled" -Wait
+        Set-Progress 72
+        Set-ModuleDone "NET"
+
+        Set-ModuleActive "APP"
+        Show-Status "  [APP]    Closing background processes..." "Magenta"
+        $apps = @("OneDrive", "Skype", "Teams", "XboxAppServices", "YourPhone", "SteamWebHelper", "Copilot")
+        foreach ($a in $apps) {
+            Get-Process $a -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        }
+        Set-Progress 84
+        Set-ModuleDone "APP"
+
+        Set-ModuleActive "TEMP"
+        Show-Status "  [TEMP]   Removing user temp files..." "Gray"
+        Remove-Item "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
+
+        Show-Status "  [TEMP]   Removing Windows temp files..." "Gray"
+        Remove-Item "C:\Windows\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
+        Set-Progress 96
+        Set-ModuleDone "TEMP"
+
+        Show-Status ""
+        Show-Status "  ------------------------------------------------" "Gray"
+        Show-Status "  [DONE]   All modules complete." "Green"
+        Show-Status "  ------------------------------------------------" "Gray"
+
+        Set-Progress 100
+        $lblStatus.Text      = "COMPLETE"
+        $lblStatus.ForeColor = $cGreen
+        $statusDot.BackColor = $cGreen
+    } catch {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Some operations require administrator rights.`nPlease re-run as Administrator.",
+            "Privilege Error"
+        )
+        Show-Status "  [WARN]   Administrator rights required." "Amber"
+        $lblStatus.Text      = "PARTIAL"
+        $lblStatus.ForeColor = $cAmber
+        $statusDot.BackColor = $cAmber
+    }
+})
+
+$form.Add_Shown({ $form.Activate() })
+[void]$form.ShowDialog()
